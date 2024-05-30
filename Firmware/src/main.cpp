@@ -7,16 +7,16 @@
 #include <ArduinoJson.h>
 #include <rBase64.h>
 
-NeuralNetwork* nn;
+NeuralNetwork *nn;
 
-const char* ssid = "custodma_2G";
-const char* password = "berserknd";
-const char* serverUrl = "http://192.168.0.119:5001";
-DynamicJsonDocument doc(2*converted_model_tflite_len);
+const char *ssid = "";
+const char *password = "";
+const char *serverUrl = "http://192.168.0.119:5001";
+DynamicJsonDocument doc(2 * converted_model_tflite_len);
 String response;
 HTTPClient http;
-const char* modelb64 = NULL;
-char* model = NULL;
+const char *modelb64 = NULL;
+char *model = NULL;
 
 uint8_t count = 10;
 
@@ -25,7 +25,8 @@ void setup()
   Serial.begin(115200);
 
   WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
+  while (WiFi.status() != WL_CONNECTED)
+  {
     delay(1000);
     Serial.println("Connecting to WiFi...");
   }
@@ -34,12 +35,13 @@ void setup()
 
 void loop()
 {
-  if (count == 10) {
-    Serial.println("Atualizando Modelo");
+  if (count == 10)
+  {
     http.begin(String(serverUrl) + "/model");
     int httpResponseCode = http.GET();
-    
-    if (httpResponseCode == HTTP_CODE_OK) {
+
+    if (httpResponseCode == HTTP_CODE_OK)
+    {
       response = http.getString();
       deserializeJson(doc, String(response));
       modelb64 = doc["model_encoded"];
@@ -48,35 +50,28 @@ void loop()
       delete[] nn;
       nn = NULL;
       nn = new NeuralNetwork(model);
-    } else {
+    }
+    else
+    {
       Serial.print("Error sending data. HTTP response code: ");
       Serial.println(httpResponseCode);
     }
     count = 0;
   }
-  
-
-  float number1 = random(100) / 100.0;
-  float number2 = random(100) / 100.0;
-
-  nn->getInputBuffer()[0] = number1;
-  nn->getInputBuffer()[1] = number2;
-
-  float result = nn->predict();
-
-  const char *expected = number2 > number1 ? "True" : "False";
-
-  const char *predicted = result > 0.5 ? "True" : "False";
-
-  Serial.printf("%.2f %.2f - result %.2f - Expected %s, Predicted %s\n", number1, number2, result, expected, predicted);
 
   http.begin(String(serverUrl) + "/data");
+  float *weights = nn->getWeights();
+  char base64String[1024];
+  rbase64.encode((uint8_t *)weights, sizeof(float) * nn->getWeights(), base64String);
   http.addHeader("Content-Type", "application/json");
-  int httpResponseCode = http.POST(String("{\"number1\": " + String(number1) + ", \"number2\": " + String(number2) + ", \"result\": " + String(result) + "}"));
-  if (httpResponseCode == HTTP_CODE_OK) {
+  int httpResponseCode = http.POST(String("{\"weights\":\"" + String(base64String) + "\"}"));
+  if (httpResponseCode == HTTP_CODE_OK)
+  {
     response = http.getString();
     Serial.println(response);
-  } else {
+  }
+  else
+  {
     Serial.print("Error sending data. HTTP response code: ");
     Serial.println(httpResponseCode);
   }

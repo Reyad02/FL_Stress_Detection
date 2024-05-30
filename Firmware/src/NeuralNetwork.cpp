@@ -7,7 +7,7 @@
 
 const int kArenaSize = 20000;
 
-NeuralNetwork::NeuralNetwork(void* converted_model)
+NeuralNetwork::NeuralNetwork(void *converted_model)
 {
     error_reporter = new tflite::MicroErrorReporter();
 
@@ -64,4 +64,27 @@ float NeuralNetwork::predict()
 {
     interpreter->Invoke();
     return output->data.f[0];
+}
+
+
+// Function to get the model weights
+float* NeuralNetwork::getWeights() {
+    // Check if model is initialized
+    if (!model) {
+        TF_LITE_REPORT_ERROR(error_reporter, "Model is not initialized.");
+        return nullptr;
+    }
+
+    // Get the number of tensors in the model
+    int num_tensors = interpreter->tensors_size();
+
+    // Iterate through tensors to find the weight tensor
+    for (int i = 0; i < num_tensors; ++i) {
+        TfLiteTensor* tensor = interpreter->tensor(i);
+        if (tensor->type == kTfLiteFloat32 && tensor->allocation_type == kTfLiteMmapRo) {
+            // Assume that this tensor is a weight tensor
+            return tensor->data.f;
+        }
+    }
+
 }
